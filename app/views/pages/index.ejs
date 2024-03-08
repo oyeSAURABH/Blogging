@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('../partials/head'); %>
+    <style>
+      .ribbon-container {
+        position: relative;
+        display: inline-block;
+        overflow: hidden;
+        width: 100%;
+      }
+      .ribbon {
+        position: absolute;
+        top: 20px;
+        left: -48%;
+        transform: rotate(-43deg);
+        background-color: #2c6904;
+        color: #fff;
+        padding: 5px 50%;
+        font-size: 12px;
+        border-radius: 5px;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.5);
+      }
+    </style>
+  </head>
+  <body style="overflow-y: hidden">
+    <nav
+      class="navbar navbar-expand-lg navbar-light bg-light flex flex-row justify-content-between"
+    >
+      <a class="navbar-brand" href="/">
+        <% if(user ) { %>
+        <h5>welcome <%= (user.name) %></h5>
+        <% } else { %>
+        <h5>Welcome</h5>
+        <% } %>
+      </a>
+      <form class="form-inline">
+        <button class="btn my-2 my-sm-0">
+          <% if(user == null) { %>
+          <a href="/login"> Login </a>
+          <% }else{ %>
+          <a href="/logout"> Logout </a>
+          <% } %>
+        </button>
+      </form>
+    </nav>
+
+    <div class="row">
+      <!-- Sidebar -->
+      <div class="col-md-3 bg-light d-flex flex-column">
+        <div class="px-4 d-flex justify-content-center flex-column">
+          <!-- Button to toggle sidebar visibility on smaller screens -->
+          <button
+            class="btn btn-outline-secondary d-md-none mb-3"
+            type="button"
+            data-toggle="collapse"
+            data-target="#sidebarCollapse"
+          >
+            Toggle Sidebar
+          </button>
+          <div class="collapse show" id="sidebarCollapse">
+            <h5 class="card-title">Categories</h5>
+            <ul class="list-group w-100" id="categoriesContainer">
+              <!-- we will add content dynamically -->
+              <% if(user?.isAdmin){ %>
+              <li
+                class="list-group-item text-center"
+                style="cursor: pointer; font-size: 20px"
+                onclick="handleAddCat()"
+              >
+                +
+              </li>
+              <% } %>
+              <li
+                class="list-group-item d-flex justify-content-between align-items-center"
+              >
+                <a href="/"> All Posts</a>
+              </li>
+            </ul>
+
+            <% if(user){ %>
+            <a href="/blog/create">
+              <button class="btn btn-outline-success my-2 w-100">
+                Create New Post
+              </button>
+            </a>
+            <% } %> <% if(user?.isAdmin){ %>
+            <a href="/user/edit">
+              <button class="btn btn-outline-primary my-2 w-100">
+                Edit User
+              </button>
+            </a>
+            <a href="/blog/auditlogs">
+              <button class="btn btn-outline-secondary my-2 w-100">
+                Audit Logs
+              </button>
+            </a>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- posts -->
+      <div class="col-md-9 d-flex flex-column mb-5">
+        <div
+          class="container mt-0"
+          style="max-height: calc(100vh - 80px); overflow: auto"
+        >
+          <div class="row mb-10px" id="postsContainer">
+            <!-- we will add content dynamically -->
+          </div>
+          <div
+            id="pagination"
+            class="mt-3 w-100 d-flex justify-content-center align-items-center"
+          >
+            <button id="prevPageBtn" class="btn btn-outline-secondary mr-2">
+              Previous
+            </button>
+            <span id="currentPage" class="mx-2">Page 1</span>
+            <button id="nextPageBtn" class="btn btn-outline-secondary ml-2">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+
+  <script>
+    let offset = 0;
+    let currentPage = 1;
+    let moveNext = false;
+
+    // add new category
+    function handleAddCat() {
+      const categoryName = prompt("Enter Category Name:");
+      if (categoryName) {
+        fetch("http://localhost:3000/api/v1/category/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: categoryName,
+          }),
+        })
+          .then((response) => response.json())
+          .then((response) => {
+            if (response.success) displayNewCategory(response.data);
+            else alert(response.data);
+          })
+          .catch((error) => {
+            console.error("Error creating category:", error);
+          });
+      }
+    }
+    function displayNewCategory(category) {
+      const categoriesContainer = document.getElementById(
+        "categoriesContainer"
+      );
+      const categoryHTML = `
+      <li class="list-group-item">
+        <a href="?cat=${category.id}">${category.name}</a>
+      </li>
+    `;
+      categoriesContainer.innerHTML += categoryHTML;
+    }
+
+    // edit category
+    function handleEditCategory(categoryId, categoryName) {
+      const newCategoryName = prompt("Edit Category Name:", categoryName);
+      if (newCategoryName) {
+        fetch(`http://localhost:3000/api/v1/category/update/${categoryId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: newCategoryName,
+          }),
+        })
+          .then((response) => response.json())
+          .then((updatedCategory) => {
+            updateCategoryOnPage(categoryId, updatedCategory.data.name);
+          })
+          .catch((error) => {
+            console.error("Error updating category:", error);
+          });
+      }
+    }
+    function updateCategoryOnPage(categoryId, newCategoryName) {
+      const categoryLink = document.querySelector(
+        `[href="?cat=${categoryId}"]`
+      );
+      if (categoryLink) {
+        categoryLink.textContent = newCategoryName;
+      }
+    }
+
+    // delete category
+    function handleDeleteCategory(categoryId) {
+      const isConfirmed = confirm(
+        "Are you sure you want to delete this category?"
+      );
+
+      if (isConfirmed) {
+        fetch(`http://localhost:3000/api/v1/category/delete/${categoryId}`, {
+          method: "DELETE",
+        })
+          .then(() => {
+            removeCategoryFromPage(categoryId);
+          })
+          .catch((error) => {
+            console.error("Error deleting category:", error);
+          });
+      }
+    }
+    function removeCategoryFromPage(categoryId) {
+      const categoryItem = document.querySelector(
+        `[href="?cat=${categoryId}"]`
+      ).parentElement;
+      if (categoryItem) {
+        categoryItem.remove();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      fetchPostsData();
+      // Fetch categories
+      fetch("http://localhost:3000/api/v1/category/read")
+        .then((response) => response.json())
+        .then((categories) => {
+          displayCategories(categories.data);
+        })
+        .catch((error) => {
+          console.error("Error fetching categories:", error);
+        });
+      // display fetched categories
+      function displayCategories(categories) {
+        const categoriesContainer = document.getElementById(
+          "categoriesContainer"
+        );
+        categories.forEach((category) => {
+          const categoryHTML = `
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <a href="?cat=${category.id}">${category.name}</a>
+                <% if(user?.isAdmin){ %>
+                <div class="category-buttons">
+                         <button class="btn btn-sm btn-primary" onclick="handleEditCategory(${category.id}, '${category.name}')">Edit</button>
+                         <button class="btn btn-sm btn-danger" onclick="handleDeleteCategory(${category.id})">Delete</button>
+                    </div>
+                <% } %>
+              </li>
+            `;
+          categoriesContainer.innerHTML += categoryHTML;
+        });
+      }
+    });
+    //next Btn
+    document
+      .getElementById("nextPageBtn")
+      .addEventListener("click", function () {
+        if (moveNext == false) return;
+        offset += 6;
+        document.getElementById(
+          "currentPage"
+        ).innerHTML = `Page ${++currentPage}`;
+        fetchPostsData();
+      });
+    //pre Btn
+    document
+      .getElementById("prevPageBtn")
+      .addEventListener("click", function () {
+        if (offset == 0) {
+          return;
+        }
+        offset -= 6;
+        document.getElementById(
+          "currentPage"
+        ).innerHTML = `Page ${--currentPage}`;
+        fetchPostsData();
+      });
+
+    // this will simply fetch post data
+    function fetchPostsData() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const categoryId = urlParams.get("cat");
+      const tag = urlParams.get("tag");
+      if (categoryId) {
+        fetch(
+          `http://localhost:3000/api/v1/posts/read?cat=${categoryId}&offset=${offset}`
+        )
+          .then((response) => response.json())
+          .then((posts) => {
+            if (posts.totalCount > offset + 6) {
+              moveNext = true;
+            } else moveNext = false;
+            displayPosts(posts.data);
+          })
+          .catch((error) => {
+            console.error("Error fetching posts:", error);
+          });
+      } else if (tag) {
+        fetch(
+          `http://localhost:3000/api/v1/posts/read?tag=${tag}&offset=${offset}`
+        )
+          .then((response) => response.json())
+          .then((posts) => {
+            // console.log(posts);
+            if (posts.totalCount > offset + 6) {
+              moveNext = true;
+            } else moveNext = false;
+            displayPosts(posts.data);
+          })
+          .catch((error) => {
+            console.error("Error fetching posts:", error);
+          });
+      } else {
+        fetch(`http://localhost:3000/api/v1/posts/read?offset=${offset}`)
+          .then((response) => response.json())
+          .then((posts) => {
+            if (posts.totalCount > offset + 6) {
+              moveNext = true;
+            } else moveNext = false;
+            displayPosts(posts.data);
+          })
+          .catch((error) => {
+            console.error("Error fetching posts:", error);
+          });
+      }
+
+      function displayPosts(posts) {
+        const postsContainer = document.getElementById("postsContainer");
+
+        if (!posts.length) {
+          postsContainer.innerHTML =
+            '<h3 class="text-muted">No posts available.</h3>';
+          let paginationContainer = document.getElementById("pagination");
+          paginationContainer.style.display = "none";
+          return;
+        }
+        postsContainer.innerHTML = "";
+        posts.forEach((post) => {
+          // console.log(post.tags);
+          const truncatedText = truncateText(post.summary, 120);
+          const imageName = post?.image?.split("\\")[1];
+
+          // Split the tags string into an array
+          const tagsArray = post.tags.split(",").map((tag) => tag.trim());
+
+          const postHTML = `
+            <div class="col-md-4 mb-5">
+              <a href="/blog/${
+                post.encryptId
+              }" style="text-decoration: none; display: block;">
+                <div class="card" style="transition: background-color 0.3s ease; position: relative; overflow: hidden;">
+                  <div class="ribbon-container">
+                    <div class="ribbon">
+                      ${post.category.name}
+                    </div>
+                    ${
+                      post.image
+                        ? `<img class="card-img-top" src="${imageName}" alt="Card image cap" style="width: 100%; height: 190px;" />`
+                        : `<img class="card-img-top" src="${"download.png"}" alt="Card image cap" style="width: 100%; height: 190px;" />`
+                    }
+                  </div>
+                  <div class="card-body">
+                    <div class="d-flex flex-row align-items-center justify-content-between">
+                      <h5 class="card-title">${post.title}</h5>
+                      <h6 class="fs-6 text-primary">${post.user.name}</h6>
+                    </div>
+                    <p class="card-text" style="min-height: 80px;">${truncatedText}</p>
+                  </div>
+                  <div class="tags-container mb-4 d-flex flex-row align-items-center justify-content-center px-2" style="min-height: 60px;">
+                    ${tagsArray
+                      .map((tag, index) =>
+                        index < 5
+                          ? `<a href="?tag=${tag}" class="btn btn-outline-success btn-sm">${tag}</a>`
+                          : ""
+                      )
+                      .join(" ")}
+                    ${
+                      tagsArray.length > 5
+                        ? `<button class="btn btn-outline-success rounded-pill btn-sm">+ ${
+                            tagsArray.length - 5
+                          }</button>`
+                        : ""
+                    }
+                  </div>
+                </div>
+              </a>
+            </div>
+          `;
+          postsContainer.innerHTML += postHTML;
+        });
+      }
+
+      function truncateText(text, maxLength) {
+        return text.length > maxLength
+          ? text.slice(0, maxLength) + "..."
+          : text;
+      }
+    }
+  </script>
+</html>

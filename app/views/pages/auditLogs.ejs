@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('../partials/head'); %>
+  </head>
+  <body>
+    <nav
+      class="navbar navbar-expand-lg navbar-light bg-light flex flex-row justify-content-between"
+    >
+      <a class="navbar-brand" href="/">
+        <% if(user ) { %>
+        <h5>welcome <%= (user.name) %></h5>
+        <% } else { %>
+        <h5>Welcome</h5>
+        <% } %>
+      </a>
+      <form class="form-inline">
+        <button class="btn my-2 my-sm-0">
+          <% if(user == null) { %>
+          <a href="/login"> Login </a>
+          <% }else{ %>
+          <a href="/logout"> Logout </a>
+          <% } %>
+        </button>
+      </form>
+    </nav>
+
+    <div class="row">
+      <div class="col-md-3 bg-light d-flex flex-column">
+        <div class="px-4 d-flex justify-content-center flex-column">
+          <h5 class="card-title">Categories</h5>
+          <ul class="list-group w-100" id="categoriesContainer">
+            <!-- we will add content dynamically -->
+            <% if(user?.isAdmin){ %>
+            <li
+              class="list-group-item text-center"
+              style="cursor: pointer; font-size: 20px"
+              onclick="handleAddCat()"
+            >
+              +
+            </li>
+            <% } %>
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <a href="/"> All Posts</a>
+            </li>
+          </ul>
+
+          <% if(user){ %>
+          <a href="/blog/create">
+            <button class="btn btn-outline-success my-2 w-100">
+              Create New Post
+            </button>
+          </a>
+          <% } %> <% if(user?.isAdmin){ %>
+          <a href="/user/edit">
+            <button class="btn btn-outline-primary my-2 w-100">
+              Edit User
+            </button>
+          </a>
+          <a href="/blog/auditlogs">
+            <button class="btn btn-outline-secondary my-2 w-100">
+              Audit Logs
+            </button>
+          </a>
+          <% } %>
+        </div>
+      </div>
+      <div class="col-md-9">
+        <div style="max-height: calc(100vh - 80px); overflow: auto">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th scope="col">SrNo</th>
+                <th scope="col">User Name</th>
+                <th scope="col">User Id</th>
+                <th scope="col">Post Id</th>
+                <th scope="col">Action</th>
+                <th scope="col">Date</th>
+              </tr>
+            </thead>
+            <tbody id="table-data">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- <div>
+      <button id="prevPageBtn">Previous Page</button>
+      <span id="currentPage">Page 1</span>
+      <button id="nextPageBtn">Next Page</button>
+    </div> -->
+
+    <script>
+      let offset = 0;
+      let currentPage = 1;
+      let moveNext = false;
+
+      document.addEventListener("DOMContentLoaded", function () {
+        fetch("http://localhost:3000/api/v1/posts/auditlogs")
+          .then((res) => res.json())
+          .then((data) => {
+            displayAudit(data.data);
+          })
+          .catch((error) => {
+            console.error("Error fetching posts:", error);
+          });
+      });
+
+      function displayAudit(data) {
+        console.log(data);
+        const tabledata = document.getElementById("table-data");
+        tabledata.innerHTML = "";
+        data.forEach((audit, index) => {
+          let buttonColorClass = "";
+
+          switch (audit.action) {
+            case "CREATE":
+              buttonColorClass = "btn-success";
+              break;
+            case "UPDATE":
+              buttonColorClass = "btn-primary";
+              break;
+            case "DELETE":
+              buttonColorClass = "btn-danger";
+              break;
+            default:
+              buttonColorClass = "btn-secondary";
+              break;
+          }
+
+          let tablerow = `<tr>
+            <th scope="row">${index + 1}</th>
+            <td>${
+              audit.user
+                ? audit.user?.name
+                : '<p style="color: red;">User Deleted</p>'
+            }</td>
+            <td>${audit.userId}</td>
+            <td>${audit.postId}</td>
+            <td><button class="btn ${buttonColorClass}">${
+            audit.action
+          }</button></td>
+          <td>${new Date(audit.createdAt).toLocaleString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}</td>
+          </tr>`;
+
+          tabledata.innerHTML += tablerow;
+        });
+      }
+
+      //next Btn
+      document
+        .getElementById("nextPageBtn")
+        .addEventListener("click", function () {
+          // Assuming moveNext is set appropriately in your code
+          if (moveNext == false) return;
+          offset += 6;
+          document.getElementById(
+            "currentPage"
+          ).innerHTML = `Page ${++currentPage}`;
+          fetchPostsData();
+        });
+
+      //pre Btn
+      document
+        .getElementById("prevPageBtn")
+        .addEventListener("click", function () {
+          if (offset == 0) return;
+          offset -= 6;
+          document.getElementById(
+            "currentPage"
+          ).innerHTML = `Page ${--currentPage}`;
+          fetchPostsData();
+        });
+
+      function fetchPostsData() {
+        // Implement your logic to fetch data based on the offset
+        // and update the table using displayAudit function
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('../partials/head'); %>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  </head>
+  <body>
+    <nav
+      class="navbar navbar-expand-lg navbar-light bg-light flex flex-row justify-content-between"
+    >
+      <a class="navbar-brand" href="/">
+        <% if(user ) { %>
+        <h5>welcome <%= (user.name) %></h5>
+        <% } else { %>
+        <h5>Welcome</h5>
+        <% } %>
+      </a>
+      <form class="form-inline">
+        <button class="btn my-2 my-sm-0">
+          <% if(user == null) { %>
+          <a href="/login"> Login </a>
+          <% }else{ %>
+          <a href="/logout"> Logout </a>
+          <% } %>
+        </button>
+      </form>
+    </nav>
+
+    <div class="container mt-5 mb-5">
+      <div class="row">
+        <div class="col-md-8" id="container">
+          <!-- Your dynamic content goes here -->
+        </div>
+        <%- include("../partials/comments"); %>
+      </div>
+    </div>
+  </body>
+  <script>
+    // function to handle delete confirmation
+    function confirmDelete(postId) {
+      if (window.confirm("Are you sure you want to delete this post?")) {
+        handleDelete(postId);
+      }
+    }
+    function handleDelete(postId) {
+      fetch(`http://localhost:3000/api/v1/posts/delete/${postId}`, {
+        method: "DELETE",
+      })
+        .then(() => {
+          window.location.href = "/";
+        })
+        .catch((error) => {
+          console.error("Error deleting post:", error);
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const urlParams = new URLSearchParams(window.location.pathname);
+      const postId = window.location.pathname.split("/").pop();
+
+      if (postId) {
+        fetch(`http://localhost:3000/api/v1/posts/read?id=${postId}`)
+          .then((response) => response.json())
+          .then((posts) => {
+            displayPosts(posts.data);
+            if (postUserId != userId)
+              document.getElementById("commentRequestsBtn").style.display =
+                "none";
+          })
+          .catch((error) => {
+            console.error("Error fetching posts:", error);
+          });
+      } else {
+        console.error("No 'id' parameter found in the URL");
+      }
+
+      function displayPosts(data) {
+        const postContainer = document.getElementById("container");
+        const updatedAt = new Date(data.updatedAt).toLocaleString();
+        const createdAt = new Date(data.createdAt).toLocaleString();
+        const imageName = data?.image?.split("\\")[1];
+        postUserId = data.userId;
+
+        const tagsArray = data.tags.split(",").map((tag) => tag.trim());
+        const postHTML = `
+          <div class="card">
+            ${
+              data?.image
+                ? `<img class="card-img-top" src="http://localhost:3000/${imageName}" alt="Card image cap" style="width: 100%; height: 300px;" />`
+                : `<img class="card-img-top" src="http://localhost:3000/download.png" alt="Card image cap" style="width: 100%; height: 300px;" />`
+            }
+            <div class="d-flex justify-content-between px-4 pt-4">
+              <div class="flex-column">
+                <h6 class="fs-6 text-muted">
+                  <span>Author:</span>
+                  <span class="text-info font-italic">${data.user.name}</span>
+                </h6>
+              </div>
+              <div class="flex-column">
+                <h6 class="fs-6 text-muted">
+                  <span>Category:</span>
+                  <span class="text-info font-italic">${
+                    data.category.name
+                  }</span>
+                </h6>
+              </div>
+            </div>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item"><strong>Tags</strong>: 
+                ${tagsArray
+                  .map(
+                    (tag, index) =>
+                      `<a href="/?tag=${tag}" class="btn btn-outline-success btn-sm">${tag}</a>`
+                  )
+                  .join(" ")}
+              </li>  
+            </ul>
+            <div class="card-body">
+              <h1 class="card-title"><u>${data.title}</u></h1>
+              <br>
+              <div class="card-text" id="postTextContainer"></div>
+            </div>
+
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">
+                <strong>Last Updated:</strong> ${updatedAt}
+              </li>
+              <li class="list-group-item">
+                <strong>Created At:</strong> ${createdAt}
+              </li>
+            </ul>
+           ${
+             userId === data.userId || isadmin
+               ? `
+                  <div class="card-footer d-flex justify-content-between">
+                    <button class="btn btn-primary" onclick="window.location.href='/blog/create?id=${data.encryptId}'">Edit</button>
+                    <button class="btn btn-danger ml-2" onclick="confirmDelete('${data.encryptId}')">Delete</button>
+                  </div>
+                `
+               : ""
+           }
+          </div>
+        `;
+
+        postContainer.innerHTML += postHTML;
+        const postTextContainer = document.getElementById("postTextContainer");
+        postTextContainer.innerHTML = data.postText;
+      }
+    });
+  </script>
+</html>

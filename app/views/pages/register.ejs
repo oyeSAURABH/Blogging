@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('../partials/head'); %>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+      .jumbotron {
+        background-color: #ffffff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container mt-5">
+      <div class="jumbotron text-center">
+        <h1 class="display-4">Register</h1>
+        <form>
+          <div class="form-group row">
+            <label for="name" class="col-sm-2 col-form-label">Name</label>
+            <div class="col-sm-10">
+              <input
+                type="text"
+                class="form-control"
+                id="name"
+                placeholder="Enter your name"
+              />
+            </div>
+          </div>
+          <div class="form-group row">
+            <label for="email" class="col-sm-2 col-form-label"
+              >Email address</label
+            >
+            <div class="col-sm-10">
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                aria-describedby="emailHelp"
+                placeholder="Enter email"
+              />
+            </div>
+          </div>
+          <div class="form-group row">
+            <label for="password" class="col-sm-2 col-form-label"
+              >Password</label
+            >
+            <div class="col-sm-10">
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                placeholder="Password"
+              />
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-10 offset-sm-2">
+              <button
+                id="sendOtpBtn"
+                onclick="submitForm()"
+                class="btn btn-primary w-100"
+              >
+                Send OTP
+              </button>
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="col-sm-10 offset-sm-2">
+              <a href="/login" class="btn btn-secondary w-100">Login</a>
+            </div>
+          </div>
+        </form>
+        <div id="loader" class="text-center d-none">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    </main>
+    <script>
+      function submitForm() {
+        const loader = document.getElementById("loader");
+        const sendOtpBtn = document.getElementById("sendOtpBtn");
+
+        loader.classList.remove("d-none");
+        sendOtpBtn.disabled = true;
+
+        event.preventDefault();
+        const name = document.getElementById("name").value;
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        // Send POST request using Fetch API
+        fetch("http://localhost:3000/api/v1/users/send-otp", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            loader.classList.add("d-none");
+
+            if (data.success == true) {
+              const enteredOTP = prompt("Enter the OTP sent to your email:");
+              if (enteredOTP) {
+                fetch("http://localhost:3000/api/v1/users/verify-otp", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    email,
+                    password,
+                    name,
+                    otp: enteredOTP,
+                  }),
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                })
+                  .then((verifyResponse) => verifyResponse.json())
+                  .then((verifyData) => {
+                    if (verifyData.success == true) {
+                      alert("Verification successful!");
+                      setTimeout(() => {
+                        window.location.href = "/login";
+                      }, 500);
+                    } else {
+                      alert(verifyData.data);
+                    }
+                  })
+                  .catch((verifyError) => {
+                    sendOtpBtn.disabled = false;
+                    console.error("Error:", verifyError.message);
+                    alert(verifyError.message);
+                  });
+              } else {
+                sendOtpBtn.disabled = false;
+                alert("Verification canceled.");
+              }
+            } else {
+              sendOtpBtn.disabled = false;
+              alert(data.data);
+            }
+          })
+          .catch((error) => {
+            loader.classList.add("d-none");
+            sendOtpBtn.disabled = false;
+            console.error("Error:", error.message);
+            alert(error.message);
+          });
+      }
+    </script>
+  </body>
+</html>

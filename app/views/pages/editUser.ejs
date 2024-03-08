@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('../partials/head'); %>
+  </head>
+  <body>
+    <nav
+      class="navbar navbar-expand-lg navbar-light bg-light flex flex-row justify-content-between"
+    >
+      <a class="navbar-brand" href="/">
+        <% if(user ) { %>
+        <h5>welcome <%= (user.name) %></h5>
+        <% } else { %>
+        <h5>Welcome</h5>
+        <% } %>
+      </a>
+      <form class="form-inline">
+        <button class="btn my-2 my-sm-0">
+          <% if(user == null) { %>
+          <a href="/login"> Login </a>
+          <% }else{ %>
+          <a href="/logout"> Logout </a>
+          <% } %>
+        </button>
+      </form>
+    </nav>
+    <div class="row">
+      <!-- sidebar -->
+      <div class="col-md-3 bg-light d-flex flex-column">
+        <div class="px-4 d-flex justify-content-center flex-column">
+          <h5 class="card-title">Categories</h5>
+          <ul class="list-group w-100" id="categoriesContainer">
+            <!-- we will add content dynamically -->
+            <% if(user?.isAdmin){ %>
+            <li
+              class="list-group-item text-center"
+              style="cursor: pointer; font-size: 20px"
+              onclick="handleAddCat()"
+            >
+              +
+            </li>
+            <% } %>
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <a href="/"> All Posts</a>
+            </li>
+          </ul>
+
+          <% if(user){ %>
+          <a href="/blog/create">
+            <button class="btn btn-outline-success my-2 w-100">
+              Create New Post
+            </button>
+          </a>
+          <% } %> <% if(user?.isAdmin){ %>
+          <a href="/user/edit">
+            <button class="btn btn-outline-primary my-2 w-100">
+              Edit User
+            </button>
+          </a>
+          <a href="/blog/auditlogs">
+            <button class="btn btn-outline-secondary my-2 w-100">
+              Audit Logs
+            </button>
+          </a>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- table -->
+      <div class="col-md-9">
+        <div style="max-height: calc(100vh - 80px); overflow: auto">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th scope="col">SrNo</th>
+                <th scope="col">User Id</th>
+                <th scope="col">User Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">isAdmin</th>
+                <th scope="col">Action</th>
+                <th scope="col">Action</th>
+                <th scope="col">CreatedAt</th>
+                <th scope="col">UpdatedAt</th>
+              </tr>
+            </thead>
+            <tbody id="table-data">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- <div>
+      <button id="prevPageBtn">Previous Page</button>
+      <span id="currentPage">Page 1</span>
+      <button id="nextPageBtn">Next Page</button>
+    </div> -->
+
+    <script>
+      //   let offset = 0;
+      //   let currentPage = 1;
+      //   let moveNext = false;
+
+      // delete user on clicking delete button
+      const currentUserId= <%= (user?.id) %>;
+
+      function deleteUser(userId) {
+        const isConfirmed = window.confirm(
+          "Are you sure you want to delete this user?"
+        );
+
+        if (isConfirmed) {
+          fetch(`http://localhost:3000/api/v1/users/remove/${userId}`, {
+            method: "DELETE",
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if(currentUserId==userId)
+                window.location.href="/logout"
+              fetchUser();
+            })
+            .catch((error) => {
+              console.error("Error deleting user:", error);
+            });
+        }
+      }
+
+      // make or remove admin
+      function toggleAdmin(userId, isAdmin) {
+        const action = isAdmin ? "remove admin" : "make admin";
+        const isConfirmed = window.confirm(
+          `Are you sure you want to ${action} for this user?`
+        );
+
+        if (isConfirmed) {
+          fetch(`http://localhost:3000/api/v1/users/toggleAdmin/${userId}`, {
+            method: "PUT",
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              console.log(data);
+              if(currentUserId==userId)
+                window.location.href="/logout"
+              fetchUser();
+            })
+            .catch((error) => {
+              console.error("Error toggling admin status:", error);
+            });
+        }
+      }
+
+      // edit user
+      function editUser(userId, currentName, currentEmail) {
+        const newName = window.prompt("Enter new username:", currentName);
+        const newEmail = window.prompt("Enter new email:", currentEmail);
+
+        if (newName !== null && newEmail !== null) {
+          fetch(`http://localhost:3000/api/v1/users/update/${userId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: newName, email: newEmail }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              console.log(data);
+              if(currentUserId==userId)
+                window.location.href="/logout"
+              fetchUser();
+            })
+            .catch((error) => {
+              console.error("Error updating user:", error);
+            });
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        fetchUser();
+      });
+      function fetchUser() {
+        fetch("http://localhost:3000/api/v1/users/read")
+          .then((res) => res.json())
+          .then((data) => {
+            displayUsers(data.data);
+          })
+          .catch((error) => {
+            console.error("Error fetching posts:", error);
+          });
+      }
+      function displayUsers(data) {
+        const tabledata = document.getElementById("table-data");
+        tabledata.innerHTML = "";
+        data.forEach((user, index) => {
+          let buttonColorClass = user.isAdmin ? "btn-success" : "btn-secondary";
+
+          let tablerow = `<tr>
+            <th scope="row">${index + 1}</th>
+            <td>${user.id}</td>
+            <td>${user.name}</td>
+            <td>${user.email}</td>
+            <td><button class="btn ${buttonColorClass}"  onclick="toggleAdmin(${
+            user.id
+          }, ${user.isAdmin})">${user.isAdmin ? "YES" : "NO"}</button></td>
+          <td><button class="btn btn-danger" onclick="deleteUser(${
+            user.id
+          })">Delete</button></td>
+          <td><button class="btn btn-primary" onclick="editUser(${user.id}, '${
+            user.name
+          }', '${user.email}')">Edit</button></td>
+          <td>${new Date(user.createdAt).toLocaleString()}</td>
+          <td>${new Date(user.updatedAt).toLocaleString()}</td>
+          </tr>`;
+          tabledata.innerHTML += tablerow;
+        });
+      }
+
+      //next Btn
+      //   document
+      //     .getElementById("nextPageBtn")
+      //     .addEventListener("click", function () {
+      //       if (moveNext == false) return;
+      //       offset += 6;
+      //       document.getElementById(
+      //         "currentPage"
+      //       ).innerHTML = `Page ${++currentPage}`;
+      //         fetchPostsData();
+      //     });
+
+      //pre Btn
+      //   document
+      //     .getElementById("prevPageBtn")
+      //     .addEventListener("click", function () {
+      //       if (offset == 0) return;
+      //       offset -= 6;
+      //       document.getElementById(
+      //         "currentPage"
+      //       ).innerHTML = `Page ${--currentPage}`;
+      //         fetchPostsData();
+      //     });
+      //   function fetchPostsData() {}
+    </script>
+  </body>
+</html>
