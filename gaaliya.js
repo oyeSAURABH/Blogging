@@ -3107,7 +3107,9 @@ const gaaliya = [
   "muslim",
   "allah",
   "olla",
-  "allah hu akbar",
+  "allah",
+  "hu",
+  "akbar",
   "quran",
 ];
 export default gaaliya;

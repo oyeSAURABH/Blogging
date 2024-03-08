@@ -117,6 +117,7 @@ const userUpdate = async (req, res) => {
 };
 
 //otp
+// const otpArray = new Set();
 const sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -125,7 +126,8 @@ const sendOtp = async (req, res) => {
       charset: "numeric",
     });
     await sendOtpToEmail(email, otp);
-    otpArray.add(otp);
+    // otpArray.add(otp);
+    req.session.otp = otp;
     res.send({ success: true, data: "OTP has been sent" });
   } catch (error) {
     return res.status(500).send({
@@ -134,14 +136,13 @@ const sendOtp = async (req, res) => {
     });
   }
 };
-const otpArray = new Set();
 const verifyOtp = async (req, res, next) => {
   try {
     const { otp } = req.body;
-    if (!otpArray.has(otp))
+    if (req.session.otp != otp)
       return res.status(402).send({ success: false, data: "invalid OTP" });
-    otpArray.delete(otp);
-    console.log(otp);
+    // otpArray.delete(otp);
+    // console.log(otp);
     next();
   } catch (error) {
     return res.status(500).send({

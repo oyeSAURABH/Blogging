@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import Users from "../app/models/users.model.js";
 import Posts from "../app/models/posts.model.js";
+import Comment from "../app/models/comment.model.js";
 
 const checkUser = async (email, password) => {
   try {
@@ -98,6 +99,17 @@ const removeUser = async (id) => {
     });
     if (deletedPosts < 0) throw new Error("Error while deleting Posts of user");
     else if (deletedPosts === 0) console.log("No posts found for the user");
+
+    //delete all comments as well
+    const deletedComments = await Comment.destroy({
+      where: {
+        userId: id,
+      },
+    });
+    if (deletedComments < 0)
+      throw new Error("Error while deleting Comments of user");
+    else if (deletedComments === 0)
+      console.log("No Comments found for the user");
 
     // now removing user
     const deletedUser = await Users.destroy({

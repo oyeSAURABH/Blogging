@@ -17,10 +17,8 @@ import {
   protectRoutesAll,
 } from "../middleware/protectRoutes.js";
 
-// const RECAPTCHA_SITE_KEY = process.env.siteKeyCaptcha;
-// const RECAPTCHA_SECRET_KEY = process.env.secretKeyCaptcha;
-const RECAPTCHA_SITE_KEY = "6LdEmoopAAAAAF5xoagy5rgEHI5RQWdmNJYlRg1D";
-const RECAPTCHA_SECRET_KEY = "6LdEmoopAAAAAJMN-UBvJBngeKDiZVC1mygfoc1_";
+const RECAPTCHA_SITE_KEY = process.env.siteKeyCaptcha;
+const RECAPTCHA_SECRET_KEY = process.env.secretKeyCaptcha;
 
 const recaptchaMiddleware = new RecaptchaV2(
   RECAPTCHA_SITE_KEY,
