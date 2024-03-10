@@ -3103,13 +3103,6 @@ const gaaliya = [
   "zipperhead",
   "zipperheads",
   "zoophile",
-  "zoophilia",
-  "muslim",
-  "allah",
-  "olla",
-  "allah",
-  "hu",
-  "akbar",
-  "quran",
+  "zoophilia"
 ];
 export default gaaliya;
